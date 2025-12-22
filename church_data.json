@@ -1,0 +1,100 @@
+{
+    "volunteers": [
+        {
+            "Nome": "Marcelo Carvalho",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Ana",
+            "Cargo": "Diaconisa",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "José Marcelo",
+            "Cargo": "Presbítero",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Alan da Nev es ",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Nilson",
+            "Cargo": "Membro",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Alba",
+            "Cargo": "Membro",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Maria ",
+            "Cargo": "Diaconisa",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Josué",
+            "Cargo": "Presbítero",
+            "Gênero": "M",
+            "Ativo": true
+        }
+    ],
+    "events_config": [
+        {
+            "name": "Culto de Doutrina",
+            "weekday": 1,
+            "time": "18:30",
+            "roles_needed": [
+                "Responsável",
+                "Portaria",
+                "Recepção"
+            ]
+        },
+        {
+            "name": "Culto de Campanha",
+            "weekday": 4,
+            "time": "18:30",
+            "roles_needed": [
+                "Responsável",
+                "Portaria"
+            ]
+        },
+        {
+            "name": "Escola Bíblica",
+            "weekday": 6,
+            "time": "08:30",
+            "roles_needed": [
+                "Responsável",
+                "Portaria"
+            ]
+        },
+        {
+            "name": "Culto da Família",
+            "weekday": 6,
+            "time": "17:30",
+            "roles_needed": [
+                "Responsável",
+                "Portaria",
+                "Recepção"
+            ]
+        }
+    ],
+    "availability_exceptions": {
+        "Alba_2025-1": {
+            "full_absence": false,
+            "blocked_days": [
+                "2025-01-07"
+            ]
+        }
+    }
+}
