@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 from datetime import date, timedelta, datetime
 from enum import Enum
 import calendar
@@ -136,10 +137,10 @@ if 'volunteers' not in st.session_state:
 
 if 'events_config' not in st.session_state:
     st.session_state.events_config = [
-        {"name": "Culto de Doutrina", "weekday": 1, "time": "18:30", "roles_needed": ["Responsável", "Portaria", "Recepção"]}, # Terça
-        {"name": "Culto de Campanha", "weekday": 4, "time": "18:30", "roles_needed": ["Responsável", "Portaria"]}, # Sexta
-        {"name": "Escola Bíblica", "weekday": 6, "time": "08:30", "roles_needed": ["Responsável", "Portaria"]}, # Domingo Manhã
-        {"name": "Culto da Família", "weekday": 6, "time": "17:30", "roles_needed": ["Responsável", "Portaria", "Recepção"]}, # Domingo Noite
+        {"name": "Culto da Palavra", "weekday": 1, "time": "18:30", "roles_needed": ["Responsável", "Portaria", "Recepção", "Estacionamento"]}, # Terça
+        {"name": "Quinta Profética", "weekday": 3, "time": "18:30", "roles_needed": ["Responsável", "Portaria", "Recepção", "Recepção", "Estacionamento"]}, # Quinta
+        {"name": "Escola Bíblica Dominical", "weekday": 6, "time": "08:30", "roles_needed": ["Responsável", "Portaria", "Recepção", "Estacionamento"]}, # Domingo Manhã
+        {"name": "Culto de Adoração", "weekday": 6, "time": "17:30", "roles_needed": ["Responsável", "Portaria", "Recepção", "Recepção", "Estacionamento"]}, # Domingo Noite
     ]
 
 if 'availability_exceptions' not in st.session_state:
@@ -179,6 +180,11 @@ class PDF(FPDF):
         self.set_text_color(*WHITE)
         
         # Cabeçalho: Nome do Evento - Horário
+        # Cabeçalho: Nome do Evento (Esq) - Horário | Resp (Dir)
+        # Layout Preview: 
+        # Left: Evento
+        # Right: Time | Resp: Nome
+        
         event_val = str(data.get('Evento', '')).upper()
         
         raw_time = data.get('Horário', '')
@@ -187,8 +193,16 @@ class PDF(FPDF):
         else:
             time_val = str(raw_time)[:5]
             
-        title_text = f"{event_val} - {time_val}"
-        self.cell(w, 8, title_text, 0, 1, 'C')
+        resp_val = str(data.get('Responsável', 'TBD'))
+        
+        # Left align Event
+        self.set_xy(x + 2, y)
+        self.cell(w/2, 8, event_val, 0, 0, 'L')
+        
+        # Right align Meta
+        meta_text = f"{time_val}  |  Resp: {resp_val}"
+        self.set_xy(x + w/2, y)
+        self.cell(w/2 - 2, 8, meta_text, 0, 1, 'R')
         
         body_h = h - 8
         body_y = y + 8
@@ -214,48 +228,49 @@ class PDF(FPDF):
         date_str = str(data.get('DataStr', ''))
         self.cell(25, 6, date_str, 0, 0, 'C')
         
-        # 4. Corpo (Lista de Funções)
+        # 4. Corpo (Lista Dinâmica de Funções)
         center_w = w - 50
         center_x = x + 25
         
         self.set_xy(center_x + 2, body_y + 3)
-        self.set_xy(center_x + 2, body_y + 3)
         self.set_font('Arial', '', 10)
         self.set_text_color(50, 50, 50)
         
-        # Lista de Itens para Exibir
-        # Lista de Itens para Exibir
-        display_items = [
-            ("Responsável", data.get("Responsável", "")),
-            ("Portaria", data.get("Portaria", "")),
-            ("Estacionamento", data.get("Estacionamento", "")),
-        ]
+        # Filtra chaves de metadados para não exibir
+        # Removemos Responsável daqui pois já está no header
+        ignore_keys = ['Data', 'Dia', 'Horário', 'Evento', 'DataStr', 'Responsável']
         
-        # Agrupar Recepção
-        recs = [str(data.get(k, '')).strip() for k in ["Recepção", "Recepção 2", "Recepção 3"]]
-        recs_clean = [r for r in recs if r and r not in ["Vago", "None", "nan", "TBD"]]
-        if recs_clean:
-            display_items.append(("Recepção", ", ".join(recs_clean)))
-            
-        # Berçário
-        berc = str(data.get("Berçário", "")).strip()
-        if berc and berc not in ["Vago", "None", "nan"]:
-            display_items.append(("Berçário", berc))
+        # Ordenação preferencial
+        priority_order = ["Portaria", "Estacionamento", "Recepção 1", "Recepção 2", "Recepção 3", "Berçário"]
+        
+        # Coletar itens para exibir
+        items_to_show = []
+        
+        # 1. Adicionar priorizados se existirem
+        for key in priority_order:
+            if key in data and data[key] and str(data[key]).lower() not in ["none", "vago", "nan", ""]:
+                items_to_show.append((key, data[key]))
+        
+        # 2. Adicionar outros (Cargos Extras/Dinâmicos)
+        for k, v in data.items():
+            if k not in ignore_keys and k not in priority_order:
+                if v and str(v).lower() not in ["none", "vago", "nan", ""]:
+                    items_to_show.append((k, v))
 
         line_height = 6
         current_y_list = self.get_y()
         
-        for label, val in display_items:
-            # Pula se vazio ou Vago (exceto Portaria/Estac que queremos ver se está Vago)
-            if not val or val == "None": continue
-            
+        for label, val in items_to_show:
             if current_y_list > y + h - 5: break 
+            
+            # Remover sufixos numéricos (ex: "Recepção 2" -> "Recepção") para visualização clean
+            clean_label = re.sub(r' \d+$', '', label)
             
             self.set_x(center_x + 5)
             self.set_font('Arial', '', 10)
-            self.cell(30, line_height, f"{label}:", 0, 0, 'L')
+            self.cell(35, line_height, f"{clean_label}:", 0, 0, 'L') # Margem label um pouco maior
             
-            self.set_x(center_x + 35)
+            self.set_x(center_x + 40)
             self.set_font('Arial', 'B', 10)
             
             # Truncar se muito longo
@@ -429,7 +444,7 @@ def generate_schedule_range(start_date, end_date):
                 available_pool.append(v)
             pool = available_pool if available_pool else [v for v in volunteers if v.active]
             
-            # --- 3. Alocação de Papéis ---
+            # --- 3. Alocação de Papéis (DINÂMICO) ---
             
             used_names = set() # Inicializar conjunto de nomes usados neste evento
 
@@ -441,11 +456,7 @@ def generate_schedule_range(start_date, end_date):
                 
                 # Tier 1: Ideal (Não trabalhou no anterior E Não fez esse papel na ultima vez)
                 tier1 = []
-                # Tier 2: Aceitável (Trabalhou no anterior MAS fez papel diferente - ou Não trabalhou mas repete papel)
-                # Vamos priorizar o descanso (Working Days) sobre a repetição de papel, ou vice-versa?
-                # Regra User: "reversar nas escalas... sem repetir posições bem como dias seguidos"
-                # Então o ideal é quem está fresco e mudando de função.
-                
+                # Tier 2: Aceitável
                 tier2 = [] # Fresco mas repetindo função OU Cansado mas mudando função
                 tier3 = [] # Cansado e repetindo função (evitar ao máximo)
                 
@@ -453,19 +464,10 @@ def generate_schedule_range(start_date, end_date):
                     last_date = last_service_date.get(cand.name)
                     last_role = last_role_history.get(cand.name)
                     
-                    # Checar se trabalhou no culto ANTERIOR (considerando a lista de datas gerada cronologicamente)
-                    # Como estamos iterando em ordem, basta ver se last_date é a data do "current_days" anterior válido?
-                    # Simplificação: Se last_date < current_date_obj (ok), mas quão perto? 
-                    # Se foi ontem ou anteontem talvez seja "cansado". Vamos considerar se last_date == data do ultimo evento processado.
-                    # Mas eventos podem ser no mesmo dia. O loop é por evento.
-                    # Se last_date == current_date_obj (já tratado pelo used_names).
-                    
                     is_tired = False
                     if last_date:
                         delta = (current_date_obj - last_date).days
-                        # Se trabalhou a menos de 2 dias (ex: trabalhou ontem), está cansado?
-                        # Se for cultos semanais (Terça, Quinta, Dom), intervalo é pequeno.
-                        # User disse: "dias seguidos". Então delta <= 1.
+                        # Regra User: "reversar nas escalas... sem repetir posições bem como dias seguidos"
                         if delta <= 1:
                             is_tired = True
                             
@@ -486,7 +488,6 @@ def generate_schedule_range(start_date, end_date):
                 elif tier3:
                     chosen = random.choice(tier3)
                 else:
-                    # Should not happen given base_pool check, but fallback
                     chosen = random.choice(base_pool)
                     
                 if chosen:
@@ -496,45 +497,45 @@ def generate_schedule_range(start_date, end_date):
                     
                 return chosen
 
-            # A) RESPONSÁVEL (Estrito: Presbítero APENAS)
-            candidates_resp = [v for v in pool if v.role.value == Role.PRESBITERO.value]
-            responsible = get_candidate_tiered(candidates_resp, "Responsável", current_date)
-            event_row["Responsável"] = responsible.name if responsible else "TBD"
+            # Combinar Roles fixos com Extras
+            # A lista "roles_needed" já vem do Configurações, onde o usuário pode adicionar manualmente.
+            # Não precisamos de "extra_roles_map" separado se o usuário editar o Config antes de gerar.
             
-            # B) PORTARIA (Homens)
-            candidates_port = [v for v in pool if v.gender.value == Gender.MALE.value]
-            portaria = get_candidate_tiered(candidates_port, "Portaria", current_date)
-            if "Portaria" in event_conf.get("roles_needed", []):
-                 event_row["Portaria"] = portaria.name if portaria else "Vago"
-
-            # C) ESTACIONAMENTO (Homens)
-            candidates_est = [v for v in pool if v.gender.value == Gender.MALE.value]
-            estacionamento = get_candidate_tiered(candidates_est, "Estacionamento", current_date)
-            event_row["Estacionamento"] = estacionamento.name if estacionamento else "Vago"
-
-            # D) RECEPÇÃO (Mulheres)
-            candidates_rec = [v for v in pool if v.gender.value == Gender.FEMALE.value]
+            current_roles_needed = event_conf.get("roles_needed", []).copy()
             
-            # Rec 1
-            rec1 = get_candidate_tiered(candidates_rec, "Recepção", current_date)
-            event_row["Recepção"] = rec1.name if rec1 else "Vago"
+            # Counter para sufixos de roles duplicadas (Ex: Recepção, Recepção -> Recepção, Recepção 2)
+            role_counts = {}
             
-            event_row["Recepção 2"] = ""
-            event_row["Recepção 3"] = ""
-            event_row["Berçário"] = ""
-
-            if is_big_service:
-                # Rec 2
-                rec2 = get_candidate_tiered(candidates_rec, "Recepção", current_date)
-                event_row["Recepção 2"] = rec2.name if rec2 else "Vago"
+            for role_name_raw in current_roles_needed:
+                # Normalizar Nome para Chave Única
+                base_name = role_name_raw.strip()
+                if base_name not in role_counts:
+                    role_counts[base_name] = 1
+                    final_key = base_name
+                else:
+                    role_counts[base_name] += 1
+                    final_key = f"{base_name} {role_counts[base_name]}"
                 
-                # Rec 3
-                rec3 = get_candidate_tiered(candidates_rec, "Recepção", current_date)
-                event_row["Recepção 3"] = rec3.name if rec3 else "Vago"
+                # Definir Restrições de Gênero/Cargo com base no nome original (sem número)
+                role_norm = base_name.lower()
                 
-                # Berçário (Mulheres)
-                bercario = get_candidate_tiered(candidates_rec, "Berçário", current_date)
-                event_row["Berçário"] = bercario.name if bercario else "Vago"
+                candidates = []
+                
+                if "responsável" in role_norm:
+                     # Apenas Presbíteros (Regra Estrita)
+                     candidates = [v for v in pool if v.role.value == Role.PRESBITERO.value]
+                elif "portaria" in role_norm or "estacionamento" in role_norm:
+                     # Apenas Homens (Excluindo Presbíteros, pois só podem ser Responsáveis)
+                     candidates = [v for v in pool if v.gender.value == Gender.MALE.value and v.role.value != Role.PRESBITERO.value]
+                elif "recepção" in role_norm or "berçário" in role_norm:
+                     # Apenas Mulheres (Excluindo Presbíteros caso existam mulheres presbítero no futuro, ou por segurança)
+                     candidates = [v for v in pool if v.gender.value == Gender.FEMALE.value and v.role.value != Role.PRESBITERO.value]
+                else:
+                     # GENÉRICO (Cargos Extras) - Excluir Presbíteros
+                     candidates = [v for v in pool if v.role.value != Role.PRESBITERO.value]
+                
+                chosen = get_candidate_tiered(candidates, base_name, current_date)
+                event_row[final_key] = chosen.name if chosen else "Vago"
             
             schedule.append(event_row)
             
@@ -586,7 +587,7 @@ st.markdown("""
 
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2664/2664627.png", width=80)
-    st.title("ADHR Sistema")
+    st.title("ADHR SistemaS")
     st.caption("v1.3.0 - Persistência Ativa")
     st.markdown("---")
     st.info("👋 **Bem-vindo!** Seus dados agora são salvos automaticamente.")
@@ -625,7 +626,7 @@ with tab1:
                 end_d = start_d + timedelta(days=6)
                 st.caption(f"Até: {end_d.strftime('%d/%m/%Y')}")
                 title_ref = f"Escala Semanal: {start_d.strftime('%d/%m')} a {end_d.strftime('%d/%m/%Y')}"
-
+        
         if st.button("🚀 Gerar Nova Escala", type="primary"):
             df = generate_schedule_range(start_d, end_d)
             if df.empty:
@@ -666,10 +667,12 @@ with tab1:
                     "Responsável": st.column_config.TextColumn("Responsável", help="Presbítero Responsável"),
                     "Portaria": st.column_config.TextColumn("Portaria"),
                     "Estacionamento": st.column_config.TextColumn("Estacionamento"),
-                    "Recepção": st.column_config.TextColumn("Recepção (Líder)"),
-                    "Recepção 2": st.column_config.TextColumn("Rec. Extra 1"),
-                    "Recepção 3": st.column_config.TextColumn("Rec. Extra 2"),
+                    "Recepção": st.column_config.TextColumn("Recepção 1"),
+                    "Recepção 2": st.column_config.TextColumn("Recepção 2"),
+                    "Recepção 3": st.column_config.TextColumn("Recepção 3"),
                     "Berçário": st.column_config.TextColumn("Berçário"),
+                    "Galeria": st.column_config.TextColumn("Galeria (Extra)"),
+                    "Apoio": st.column_config.TextColumn("Apoio (Extra)"),
                 },
                 hide_index=True
             )
@@ -751,9 +754,20 @@ with tab1:
                     dia_str = str(row.get('Dia', ''))
                     
                     roles_html = ""
-                    exclude_keys = ['Data', 'Dia', 'Horário', 'Evento', 'Responsável']
+                    exclude_keys = ['Data', 'Dia', 'Horário', 'Evento', 'Responsável', 'DataStr']
                     roles_dict = {k: v for k, v in row.items() if k not in exclude_keys}
                     
+                    # Ordenar Preview
+                    prio = ["Portaria", "Estacionamento", "Recepção 1", "Recepção 2", "Recepção 3", "Berçário"]
+                    
+                    # 1. Prio
+                    for k in prio:
+                        if k in roles_dict:
+                            val = roles_dict.pop(k)
+                            if val and str(val) != "Vago" and str(val) != "nan":
+                                roles_html += f'<div class="role-row"><span class="role-label">{k}</span><span class="role-name">{val}</span></div>'
+                    
+                    # 2. Resto (Extras como Galeria)
                     for r, n in roles_dict.items():
                          if n and str(n) != "N/A" and str(n).lower() != "nan":
                             roles_html += f'<div class="role-row"><span class="role-label">{r}</span><span class="role-name">{n}</span></div>'
@@ -828,7 +842,8 @@ with tab2:
 # --- TAB 3: CONFIGURAÇÕES ---
 with tab3:
     st.header("⚙️ Configuração dos Cultos")
-    st.info("💡 **Dica:** Para editar, clique na célula. Para adicionar um novo culto, clique na linha com `+` abaixo. Para excluir, selecione a linha e pressione `Delete`.")
+    st.info("💡 **Dica:** Aqui você define a estrutura padrão. Para 'Cargos Extras' (ex: Galeria), basta digitar o nome do cargo na coluna 'Funções' (separado por vírgula) para o culto desejado.")
+    st.caption("Exemplo: `Responsável, Portaria, Galeria`")
 
     events_data = []
     for e in st.session_state.events_config:
@@ -900,6 +915,109 @@ with tab3:
 
 # --- TAB 4: CADASTRO (DATA EDITOR) ---
 with tab4:
+    st.subheader("📂 Importar/Exportar Dados")
+    
+    # 1. Área de UPLOAD (Importar)
+    uploaded_file = st.file_uploader("Restaurar Backup ou Importar Lista (CSV)", type=["csv"])
+    
+    if uploaded_file is not None:
+        try:
+            # Lendo com o separador ';' para ser compatível com o arquivo que o Excel salva
+            df_import = pd.read_csv(uploaded_file, sep=';')
+            
+            # Limpeza dos nomes das colunas (remove espaços extras que o Excel possa ter criado)
+            df_import.columns = [c.strip() for c in df_import.columns]
+            
+            required_cols = ["Nome", "Cargo", "Gênero"]
+            
+            if all(col in df_import.columns for col in required_cols):
+                
+                st.info(f"Arquivo carregado com {len(df_import)} registros. O que deseja fazer?")
+                col_btn1, col_btn2 = st.columns(2)
+                
+                # Opção A: SUBSTITUIR (Zera e coloca o novo)
+                if col_btn1.button("⚠️ SUBSTITUIR toda a lista atual"):
+                    new_volunteers = []
+                    for index, row in df_import.iterrows():
+                        # Verifica se a coluna 'Ativo' existe, senão assume True
+                        active_status = row["Ativo"] if "Ativo" in row else True
+                        
+                        v = Volunteer.from_dict({
+                            "Nome": row["Nome"],
+                            "Cargo": row["Cargo"],
+                            "Gênero": row["Gênero"],
+                            "Ativo": active_status
+                        })
+                        if v: new_volunteers.append(v)
+                    
+                    st.session_state.volunteers = new_volunteers
+                    save_data()
+                    st.success("Lista substituída! Pressione 'R' para recarregar.")
+                    st.rerun()
+
+                # Opção B: MESCLAR (Mantém os atuais e soma os novos)
+                if col_btn2.button("➕ ADICIONAR aos existentes"):
+                    added_count = 0
+                    # Cria lista de nomes atuais normalizada (minúscula) para evitar duplicatas
+                    current_names = [v.name.lower().strip() for v in st.session_state.volunteers]
+                    
+                    for index, row in df_import.iterrows():
+                        name_clean = str(row["Nome"]).strip()
+                        # Só adiciona se o nome não existir
+                        if name_clean.lower() not in current_names:
+                            active_status = row["Ativo"] if "Ativo" in row else True
+                            v = Volunteer.from_dict({
+                                "Nome": row["Nome"],
+                                "Cargo": row["Cargo"],
+                                "Gênero": row["Gênero"],
+                                "Ativo": active_status
+                            })
+                            if v: 
+                                st.session_state.volunteers.append(v)
+                                added_count += 1
+                    
+                    save_data()
+                    st.success(f"{added_count} novos obreiros adicionados! Pressione 'R'.")
+                    st.rerun()
+            else:
+                st.error(f"O arquivo CSV precisa ter as colunas: {', '.join(required_cols)}. Verifique se está separado por ponto e vírgula (;).")
+                
+        except Exception as e:
+            st.error(f"Erro ao ler o arquivo. Verifique se é um CSV válido. Detalhe: {e}")
+
+    st.divider()
+
+    # 2. Área de DOWNLOAD (Backup) - Com a correção de acentos para Excel
+    st.markdown("### 💾 Backup dos Dados")
+    col_bkp1, col_bkp2 = st.columns([2, 1])
+    
+    with col_bkp1:
+        st.info("Baixe a planilha formatada para Excel (com acentos corrigidos).")
+        
+    with col_bkp2:
+        if st.session_state.volunteers:
+            # 1. Converter objetos para DataFrame
+            current_data = [v.to_dict() for v in st.session_state.volunteers]
+            df_export = pd.DataFrame(current_data)
+            
+            # 2. Gerar o texto CSV (separado por ponto e vírgula)
+            # Nota: Não passamos encoding aqui, pois ele ignoraria ao gerar string
+            csv_text = df_export.to_csv(index=False, sep=';')
+            
+            # 3. A MÁGICA: Converter Texto -> Bytes com a assinatura BOM (UTF-8-SIG)
+            # Isso força o Excel a entender que é UTF-8
+            csv_bytes = csv_text.encode('utf-8-sig')
+            
+            st.download_button(
+                label="📥 Baixar Planilha (Excel)",
+                data=csv_bytes,  # Entregamos os bytes assinados, não o texto
+                file_name="obreiros_backup.csv",
+                mime="text/csv"
+            )
+
+    st.divider()
+    
+    # 3. Formulário Manual (Mantido original)
     with st.expander("➕ Adicionar Novo Obreiro (Cadastro Rápido)", expanded=True):
         st.caption("Preencha os dados e clique em 'Salvar Novo' para adicionar rapidamente.")
         with st.form("new_volunteer_form", clear_on_submit=True):
@@ -907,15 +1025,17 @@ with tab4:
             with c1:
                 new_name = st.text_input("Nome Completo")
             with c2:
+                # Recupera os valores do Enum Role
                 new_role = st.selectbox("Cargo", [r.value for r in Role])
             new_gender = st.radio("Gênero", ["M", "F"], horizontal=True)
                 
             if st.form_submit_button("Salvar Novo"):
                 if new_name:
+                    # Lógica para converter string de volta para Enum e salvar
                     role_enum = next(r for r in Role if r.value == new_role)
                     gender_enum = Gender.MALE if new_gender == "M" else Gender.FEMALE
                     st.session_state.volunteers.append(Volunteer(new_name, role_enum, gender_enum))
-                    save_data() # SAVE AUTO
+                    save_data()
                     st.success(f"{new_name} adicionado!")
                     st.rerun()
 
@@ -950,6 +1070,6 @@ with tab4:
                 obj = Volunteer.from_dict(row)
                 if obj: new_list.append(obj)
         st.session_state.volunteers = new_list
-        save_data() # SAVE AUTO
+        save_data()
         st.success("Tabela atualizada com sucesso!")
         st.rerun()

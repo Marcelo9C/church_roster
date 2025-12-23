@@ -7,9 +7,27 @@
             "Ativo": true
         },
         {
-            "Nome": "Ana",
-            "Cargo": "Diaconisa",
-            "Gênero": "F",
+            "Nome": "Roger",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Josué",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Evanildo",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Alan das Neves",
+            "Cargo": "Diácono",
+            "Gênero": "M",
             "Ativo": true
         },
         {
@@ -19,8 +37,56 @@
             "Ativo": true
         },
         {
-            "Nome": "Alan da Nev es ",
+            "Nome": "Shelton",
             "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Márcio Vinícius",
+            "Cargo": "Presbítero",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Marcos Vinícius",
+            "Cargo": "Auxiliar",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "João Marcos",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Gonzaga",
+            "Cargo": "Presbítero",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Jonas Silk",
+            "Cargo": "Presbítero",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Genilson",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Matheus",
+            "Cargo": "Jovem",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Wallace",
+            "Cargo": "Jovem",
             "Gênero": "M",
             "Ativo": true
         },
@@ -31,70 +97,149 @@
             "Ativo": true
         },
         {
+            "Nome": "Fábio Pessoa",
+            "Cargo": "Auxiliar",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Robson Silva",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Silvino",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
+            "Nome": "Vanderson Policarpo",
+            "Cargo": "Diácono",
+            "Gênero": "M",
+            "Ativo": true
+        },
+        {
             "Nome": "Alba",
             "Cargo": "Membro",
             "Gênero": "F",
             "Ativo": true
         },
         {
-            "Nome": "Maria ",
+            "Nome": "Luana",
             "Cargo": "Diaconisa",
             "Gênero": "F",
             "Ativo": true
         },
         {
-            "Nome": "Josué",
-            "Cargo": "Presbítero",
-            "Gênero": "M",
+            "Nome": "Cláudia ",
+            "Cargo": "Diaconisa",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Thays Neves",
+            "Cargo": "Jovem",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Alessandra",
+            "Cargo": "Diaconisa",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Maria Braga",
+            "Cargo": "Diaconisa",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Lorrany",
+            "Cargo": "Jovem",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Roberta",
+            "Cargo": "Membro",
+            "Gênero": "F",
+            "Ativo": true
+        },
+        {
+            "Nome": "Girlane",
+            "Cargo": "Diaconisa",
+            "Gênero": "F",
             "Ativo": true
         }
     ],
     "events_config": [
         {
-            "name": "Culto de Doutrina",
+            "name": "Culto da Palavra",
             "weekday": 1,
             "time": "18:30",
             "roles_needed": [
                 "Responsável",
                 "Portaria",
-                "Recepção"
+                "Recepção",
+                "Estacionamento"
             ]
         },
         {
-            "name": "Culto de Campanha",
-            "weekday": 4,
+            "name": "Quinta Profética",
+            "weekday": 3,
             "time": "18:30",
             "roles_needed": [
                 "Responsável",
-                "Portaria"
+                "Portaria",
+                "Recepção",
+                "Recepção",
+                "Estacionamento"
             ]
         },
         {
-            "name": "Escola Bíblica",
+            "name": "Escola Bíblica Dominical",
             "weekday": 6,
             "time": "08:30",
             "roles_needed": [
                 "Responsável",
-                "Portaria"
+                "Portaria",
+                "Recepção",
+                "Estacionamento"
             ]
         },
         {
-            "name": "Culto da Família",
+            "name": "Culto de Adoração",
             "weekday": 6,
             "time": "17:30",
             "roles_needed": [
                 "Responsável",
                 "Portaria",
-                "Recepção"
+                "Recepção",
+                "Recepção",
+                "Estacionamento"
+            ]
+        },
+        {
+            "name": "Cantata de Natal",
+            "weekday": 2,
+            "time": "17:30",
+            "roles_needed": [
+                "Responsável",
+                "Portaria",
+                "Recepção",
+                "Estacionamento",
+                "Berçário",
+                "Banheiro",
+                "Estacionamento",
+                "Galeria",
+                "Corredor",
+                "Corredor",
+                "Portaria"
             ]
         }
     ],
-    "availability_exceptions": {
-        "Alba_2025-1": {
-            "full_absence": false,
-            "blocked_days": [
-                "2025-01-07"
-            ]
-        }
-    }
+    "availability_exceptions": {}
 }
