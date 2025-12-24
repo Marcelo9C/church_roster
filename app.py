@@ -639,7 +639,7 @@ with st.sidebar:
 
     st.write("© 2025 ADHR")
 
-st.title("⛪ ESTOU TESTANDO O PYTHON")
+st.title("⛪ Gerenciador de Escalas")
 
 tab1, tab2, tab3, tab4 = st.tabs(
     ["📅 Gerar Escala", "🚫 Disponibilidade", "⚙️ Configurações", "👥 Cadastro (Editar/Excluir)"])
