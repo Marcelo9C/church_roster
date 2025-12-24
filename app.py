@@ -632,8 +632,8 @@ st.markdown("""
 
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2664/2664627.png", width=80)
-    st.title("ADHR SistemaS")
-    st.caption("v1.3.0 - Persistência Ativa")
+    st.title("ADHR Sistemas")
+    st.caption("v1.3.1 - Recomeço")
     st.markdown("---")
     st.info("👋 **Bem-vindo!** Seus dados agora são salvos automaticamente.")
 
@@ -678,8 +678,7 @@ with tab1:
                 title_ref = f"Escala Semanal: {start_d.strftime('%d/%m')} a {end_d.strftime('%d/%m/%Y')}"
 
         if st.button("🚀 Gerar Nova Escala", type="primary"):
-            st.balloons()  # <--- ADICIONE ESTA LINHA AQUI
-    # ... o resto do código continua aqui embaixo ...
+            st.toast('Tudo pronto! A escala foi atualizada.', icon='✅')
             df = generate_schedule_range(start_d, end_d)
             if df.empty:
                 st.warning(
@@ -1005,6 +1004,7 @@ with tab4:
             required_cols = ["Nome", "Cargo", "Gênero"]
 
             if all(col in df_import.columns for col in required_cols):
+                df_import = df_import.sort_values(by="Nome")
 
                 st.info(
                     f"Arquivo carregado com {len(df_import)} registros. O que deseja fazer?")
