@@ -678,6 +678,8 @@ with tab1:
                 title_ref = f"Escala Semanal: {start_d.strftime('%d/%m')} a {end_d.strftime('%d/%m/%Y')}"
 
         if st.button("🚀 Gerar Nova Escala", type="primary"):
+            st.balloons()  # <--- ADICIONE ESTA LINHA AQUI
+    # ... o resto do código continua aqui embaixo ...
             df = generate_schedule_range(start_d, end_d)
             if df.empty:
                 st.warning(
