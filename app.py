@@ -37,9 +37,10 @@ def save_data():
         "events_config": st.session_state.events_config,
         "availability_exceptions": {
             k: {
-                'full_absence': v['full_absence'],
+                'full_absence': v.get('full_absence', False),
                 # Serializar datas para string ISO
-                'blocked_days': [d.isoformat() for d in v['blocked_days']]
+                'blocked_days': [d.isoformat() for d in v.get('blocked_days', [])],
+                'partial_blocks': v.get('partial_blocks', {})  # "YYYY-MM-DD": "morning"/"night"
             } for k, v in st.session_state.availability_exceptions.items()
         }
     }
@@ -69,8 +70,9 @@ def load_data():
             loaded_exc = {}
             for k, v in data.get("availability_exceptions", {}).items():
                 loaded_exc[k] = {
-                    'full_absence': v['full_absence'],
-                    'blocked_days': [date.fromisoformat(d) for d in v['blocked_days']]
+                    'full_absence': v.get('full_absence', False),
+                    'blocked_days': [date.fromisoformat(d) for d in v.get('blocked_days', [])],
+                    'partial_blocks': v.get('partial_blocks', {})
                 }
             st.session_state.availability_exceptions = loaded_exc
 
@@ -103,11 +105,13 @@ class Gender(Enum):
 
 
 class Volunteer:
-    def __init__(self, name, role, gender, active=True):
+    def __init__(self, name, role, gender, active=True, can_lead=False, in_prayer_team=False):
         self.name = name
         self.role = role
         self.gender = gender
         self.active = active
+        self.can_lead = can_lead
+        self.in_prayer_team = in_prayer_team
 
     def to_dict(self):
         return {
@@ -115,7 +119,9 @@ class Volunteer:
             # Garantir que retorna o value do Enum exato
             "Cargo": self.role.value,
             "Gênero": self.gender.value,
-            "Ativo": self.active
+            "Ativo": self.active,
+            "Líder?": self.can_lead,
+            "Eq. Oração?": self.in_prayer_team
         }
 
     @staticmethod
@@ -136,8 +142,10 @@ class Volunteer:
             gender_enum = Gender.MALE if gender_val.startswith(
                 "M") else Gender.FEMALE
             active = bool(data.get("Ativo", True))
+            can_lead = bool(data.get("Líder?", False))
+            in_prayer_team = bool(data.get("Eq. Oração?", False))
 
-            return Volunteer(data["Nome"], role_enum, gender_enum, active)
+            return Volunteer(data["Nome"], role_enum, gender_enum, active, can_lead, in_prayer_team)
         except Exception:
             return None
 
@@ -455,16 +463,14 @@ def generate_schedule_range(start_date, end_date):
             }
 
             # --- 1. Definição da Estrutura do Culto (Regras Dinâmicas) ---
-            # Regra Culto Grande: Quintas/Sextas (Weekdays 3,4) > 18h OU Domingos (Weekday 6) > 17h
             hour_int = int(event_conf['time'].split(':')[0])
             is_thursday_friday_night = (weekday in [3, 4] and hour_int >= 18)
             is_sunday_night = (weekday == 6 and hour_int >= 17)
-            is_big_service = is_thursday_friday_night or is_sunday_night
+            
+            # Feature 3: Monday Prayer Logic
+            is_monday_prayer = (weekday == 0 and hour_int >= 21)
 
             # --- 2. Preparação do Pool ---
-            # ... (código existente de disponibilidade removido para brevidade, mantendo lógica)
-
-            # Disponibilidade Check (Simplificado - mantendo o anterior)
             available_pool = []
             year = current_date.year
             month = current_date.month
@@ -474,11 +480,30 @@ def generate_schedule_range(start_date, end_date):
                 exc_key = f"{v.name}_{year}-{month}"
                 exceptions = st.session_state.availability_exceptions.get(
                     exc_key, {})
+                
+                # Full Absence
                 if exceptions.get('full_absence', False):
                     continue
                 if current_date in exceptions.get('blocked_days', []):
                     continue
+                
+                # Feature 2: Partial Absence
+                date_iso = current_date.isoformat()
+                partial_type = exceptions.get('partial_blocks', {}).get(date_iso)
+                if partial_type:
+                    # "Manhã": blocked if hour < 12
+                    if partial_type == "morning" and hour_int < 12:
+                        continue
+                    # "Noite": blocked if hour >= 12
+                    if partial_type == "night" and hour_int >= 12:
+                        continue
+
+                # Feature 3: Filter for Prayer Team (Strict)
+                if is_monday_prayer and not v.in_prayer_team:
+                    continue
+
                 available_pool.append(v)
+            
             pool = available_pool if available_pool else [
                 v for v in volunteers if v.active]
 
@@ -487,7 +512,7 @@ def generate_schedule_range(start_date, end_date):
             used_names = set()  # Inicializar conjunto de nomes usados neste evento
 
             # Helper para selecionar candidato com base em regras de 'Cansaço' e 'Rodízio'
-            def get_candidate_tiered(candidates, role_target, current_date_obj):
+            def get_candidate_tiered(candidates, role_target, current_date_obj, ignore_fatigue=False, update_history=True):
                 # Filtra quem já está neste culto
                 base_pool = [c for c in candidates if c.name not in used_names]
                 if not base_pool:
@@ -504,7 +529,7 @@ def generate_schedule_range(start_date, end_date):
                     last_role = last_role_history.get(cand.name)
 
                     is_tired = False
-                    if last_date:
+                    if last_date and not ignore_fatigue:
                         delta = (current_date_obj - last_date).days
                         # Regra User: "reversar nas escalas... sem repetir posições bem como dias seguidos"
                         if delta <= 1:
@@ -531,15 +556,13 @@ def generate_schedule_range(start_date, end_date):
 
                 if chosen:
                     used_names.add(chosen.name)
-                    last_role_history[chosen.name] = role_target
-                    last_service_date[chosen.name] = current_date_obj
+                    if update_history:
+                        last_role_history[chosen.name] = role_target
+                        last_service_date[chosen.name] = current_date_obj
 
                 return chosen
 
             # Combinar Roles fixos com Extras
-            # A lista "roles_needed" já vem do Configurações, onde o usuário pode adicionar manualmente.
-            # Não precisamos de "extra_roles_map" separado se o usuário editar o Config antes de gerar.
-
             current_roles_needed = event_conf.get("roles_needed", []).copy()
 
             # Counter para sufixos de roles duplicadas (Ex: Recepção, Recepção -> Recepção, Recepção 2)
@@ -561,9 +584,12 @@ def generate_schedule_range(start_date, end_date):
                 candidates = []
 
                 if "responsável" in role_norm:
-                    # Apenas Presbíteros (Regra Estrita)
+                    # Feature 1: Presbíteros OU Diáconos Líderes
                     candidates = [
-                        v for v in pool if v.role.value == Role.PRESBITERO.value]
+                        v for v in pool 
+                        if (v.role.value == Role.PRESBITERO.value) or 
+                           (v.role.value == Role.DIACONO.value and v.can_lead)
+                    ]
                 elif "portaria" in role_norm or "estacionamento" in role_norm:
                     # Apenas Homens (Excluindo Presbíteros, pois só podem ser Responsáveis)
                     candidates = [v for v in pool if v.gender.value ==
@@ -577,8 +603,13 @@ def generate_schedule_range(start_date, end_date):
                     candidates = [
                         v for v in pool if v.role.value != Role.PRESBITERO.value]
 
+                # Feature 3: Adjust Logic for Prayer Team
+                # Skip fatigue check and do NOT update history for Monday Prayer
                 chosen = get_candidate_tiered(
-                    candidates, base_name, current_date)
+                    candidates, base_name, current_date,
+                    ignore_fatigue=is_monday_prayer,
+                    update_history=(not is_monday_prayer)
+                )
                 event_row[final_key] = chosen.name if chosen else "Vago"
 
             schedule.append(event_row)
@@ -892,16 +923,84 @@ with tab2:
                         default_vals.append(date.fromisoformat(b))
 
                 blocked = st.multiselect(
-                    "Dias Indisponíveis specificos:",
+                    "Selecione os dias:",
                     days,
                     default=default_vals,
                     format_func=lambda x: days_fmt[x]
                 )
 
+                block_type = st.radio(
+                    "Tipo de Bloqueio para os dias selecionados:",
+                    ["Dia Todo (Indisponível)", "Apenas Manhã (Indisponível até 12h)",
+                     "Apenas Noite (Indisponível após 12h)"],
+                    index=0
+                )
+
                 if st.form_submit_button("Salvar Restrição"):
+                    # Carregar existentes para preservar o que não foi alterado?
+                    # Na UI atual, o usuário edita a lista TOTAL de dias bloqueados "deste mês".
+                    # Se implementarmos 'partial', a UI de multiselect única fica confusa se misturar tipos.
+                    # Vamos assumir que o Multiselect define QUEM está bloqueado, e o Radio define O MODO desses selecionados.
+                    # ISSO PODE SOBRESCREVER dados anteriores se não for cuidadoso.
+                    # Melhor abordagem para UX simples: O multiselect mostra TODOS bloqueados (parcial ou total).
+                    # Ao salvar, atualizamos o status DESSES dias para o tipo selecionado.
+
+                    # Lógica Híbrida Simplificada:
+                    # 1. Limpar configurações anteriores para o Mês atual? Não, perigoso.
+                    # 2. Vamos recriar as listas baseadas no input atual.
+
+                    existing_partial = curr.get('partial_blocks', {}).copy()
+                    
+                    # Convertendo inputs para lista de strings if needed, mas blocked já é Date objects
+                    new_full_blocks = []
+                    
+                    # Tipo Simples
+                    scope = "full"
+                    if "Manhã" in block_type:
+                        scope = "morning"
+                    elif "Noite" in block_type:
+                        scope = "night"
+
+                    for day_obj in blocked:
+                        d_iso = day_obj.isoformat()
+                        if scope == "full":
+                            new_full_blocks.append(day_obj)
+                            # Remove de parcial se existisse
+                            if d_iso in existing_partial:
+                                del existing_partial[d_iso]
+                        else:
+                            # Adiciona no parcial
+                            existing_partial[d_iso] = scope
+                            # Garante que não está no full (se o usuario mudou de full pra parcial)
+                            # (A lista new_full_blocks só tem o que é full agora)
+                            pass
+
+                    # E os dias que foram DESMARCADOS?
+                    # O blocked contém a lista "Atualizada" de dias com ALGUMA restrição.
+                    # Se um dia não está em 'blocked', ele deve ser removido de tudo.
+                    
+                    final_full_days = []
+                    final_partial = {}
+
+                    blocked_iso_set = {d.isoformat() for d in blocked}
+
+                    # Recalcular Baseado na intenção do usuário:
+                    # O usuário vê "Dias Indisponíveis". Ele marca/desmarca.
+                    # O que ficar marcado, assume o "block_type" selecionado.
+                    # Problema: Se ele quiser marcar dia 5 como Manhã e dia 10 como Noite?
+                    # Ele teria que fazer em 2 passos. Mas o st.form envia tudo de uma vez.
+                    # Com multiselect único, ele impõe o tipo a todos.
+                    # LIMITAÇÃO ACEITÁVEL para a UI simples. 
+                    # OBS: Se ele quiser mix, ele salva um grupo, depois muda a seleção e salva outro? 
+                    # O st.multiselect re-renderiza com o que está no estado.
+                    
+                    # Solução p/ UX: Permitir salvar "incrementalmente" é difícil sem session state complexo.
+                    # Vamos assumir: O Radio aplica o tipo para OS DIAS SELECIONADOS. 
+                    
                     st.session_state.availability_exceptions[exc_key] = {
                         'full_absence': full,
-                        'blocked_days': blocked
+                        'blocked_days': new_full_blocks,
+                        'partial_blocks': existing_partial
                     }
                     save_data()  # SAVE AUTO
                     st.success("Salvo!")
@@ -1131,7 +1230,7 @@ with tab4:
         df_volunteers = pd.DataFrame(data_rows)
     else:
         df_volunteers = pd.DataFrame(
-            columns=["Nome", "Cargo", "Gênero", "Ativo"])
+            columns=["Nome", "Cargo", "Gênero", "Ativo", "Líder?", "Eq. Oração?"])
 
     edited_volunteers = st.data_editor(
         df_volunteers,
@@ -1140,7 +1239,9 @@ with tab4:
             "Nome": st.column_config.TextColumn("Nome Completo", required=True),
             "Cargo": st.column_config.SelectboxColumn("Cargo", options=[r.value for r in Role], required=True),
             "Gênero": st.column_config.SelectboxColumn("Gênero", options=["M", "F"], required=True),
-            "Ativo": st.column_config.CheckboxColumn("Ativo?", default=True)
+            "Ativo": st.column_config.CheckboxColumn("Ativo?", default=True),
+            "Líder?": st.column_config.CheckboxColumn("Líder?", help="Permite liderar escalas (Diáconos)", default=False),
+            "Eq. Oração?": st.column_config.CheckboxColumn("Eq. Oração?", default=False)
         },
         use_container_width=True,
         key="editor_volunteers"
