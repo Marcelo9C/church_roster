@@ -493,7 +493,7 @@
             "Cargo": "Diácono",
             "Gênero": "M",
             "Ativo": true,
-            "Líder?": true,
+            "Líder?": false,
             "Eq. Oração?": false
         },
         {
@@ -817,21 +817,14 @@
             ]
         },
         {
-            "name": "Cantata de Natal",
-            "weekday": 2,
-            "time": "17:30",
+            "name": "Culto de Oração",
+            "weekday": 0,
+            "time": "21:30",
             "roles_needed": [
                 "Responsável",
                 "Portaria",
-                "Recepção",
-                "Estacionamento",
-                "Berçário",
-                "Banheiro",
-                "Estacionamento",
-                "Galeria",
-                "Corredor",
-                "Corredor",
-                "Portaria"
+                "Repção",
+                "Estacionamento"
             ]
         }
     ],

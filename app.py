@@ -350,7 +350,7 @@ def create_pdf(schedule_df, title_text):
                             card_width, card_height, row_data)
         current_y += card_height + 5
 
-    return pdf.output(dest='S').encode('latin-1', errors='ignore')
+    return pdf.output(dest='S')
 
 
 # --- 4. Lógica de Geração ---
@@ -776,6 +776,7 @@ with tab1:
                 if st.button("💾 Oficializar Escala (Salvar no Histórico)"):
                     # Ler o DataFrame FINAL (Editado)
                     # Atualizar o arquivo JSON com a última função/data de cada um
+                    final_df = edited_schedule
 
                     current_hist = load_history_scales()
 
