@@ -786,7 +786,7 @@ with tab1:
 
                     count_updates = 0
                     for _, row in final_df_sorted.iterrows():
-                        d_str = row['DataStr']  # Já formatado ou raw
+                        # d_str = row['DataStr']  # Já formatado ou raw
                         # Tentar pegar data real
                         d_obj = row['Data']
                         if not isinstance(d_obj, (date, datetime)):

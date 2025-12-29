@@ -54,7 +54,7 @@
             "Gênero": "M",
             "Ativo": true,
             "Líder?": false,
-            "Eq. Oração?": false
+            "Eq. Oração?": true
         },
         {
             "Nome": "Alba Maria",
@@ -62,7 +62,7 @@
             "Gênero": "F",
             "Ativo": true,
             "Líder?": false,
-            "Eq. Oração?": false
+            "Eq. Oração?": true
         },
         {
             "Nome": "Alessandra",
@@ -310,7 +310,7 @@
             "Gênero": "M",
             "Ativo": true,
             "Líder?": false,
-            "Eq. Oração?": false
+            "Eq. Oração?": true
         },
         {
             "Nome": "Geovania",
@@ -334,7 +334,7 @@
             "Gênero": "F",
             "Ativo": true,
             "Líder?": false,
-            "Eq. Oração?": false
+            "Eq. Oração?": true
         },
         {
             "Nome": "Gleison Tranhaque",
@@ -405,8 +405,8 @@
             "Cargo": "Diácono",
             "Gênero": "M",
             "Ativo": true,
-            "Líder?": false,
-            "Eq. Oração?": false
+            "Líder?": true,
+            "Eq. Oração?": true
         },
         {
             "Nome": "José Manoel",
@@ -478,7 +478,7 @@
             "Gênero": "F",
             "Ativo": true,
             "Líder?": false,
-            "Eq. Oração?": false
+            "Eq. Oração?": true
         },
         {
             "Nome": "Lucas Melo",
@@ -493,8 +493,8 @@
             "Cargo": "Diácono",
             "Gênero": "M",
             "Ativo": true,
-            "Líder?": false,
-            "Eq. Oração?": false
+            "Líder?": true,
+            "Eq. Oração?": true
         },
         {
             "Nome": "Marcelo Frederico",
@@ -765,8 +765,8 @@
             "Cargo": "Presbítero",
             "Gênero": "M",
             "Ativo": true,
-            "Líder?": false,
-            "Eq. Oração?": false
+            "Líder?": true,
+            "Eq. Oração?": true
         }
     ],
     "events_config": [
