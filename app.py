@@ -40,7 +40,8 @@ def save_data():
                 'full_absence': v.get('full_absence', False),
                 # Serializar datas para string ISO
                 'blocked_days': [d.isoformat() for d in v.get('blocked_days', [])],
-                'partial_blocks': v.get('partial_blocks', {})  # "YYYY-MM-DD": "morning"/"night"
+                # "YYYY-MM-DD": "morning"/"night"
+                'partial_blocks': v.get('partial_blocks', {})
             } for k, v in st.session_state.availability_exceptions.items()
         }
     }
@@ -466,7 +467,7 @@ def generate_schedule_range(start_date, end_date):
             hour_int = int(event_conf['time'].split(':')[0])
             is_thursday_friday_night = (weekday in [3, 4] and hour_int >= 18)
             is_sunday_night = (weekday == 6 and hour_int >= 17)
-            
+
             # Feature 3: Monday Prayer Logic
             is_monday_prayer = (weekday == 0 and hour_int >= 21)
 
@@ -480,16 +481,17 @@ def generate_schedule_range(start_date, end_date):
                 exc_key = f"{v.name}_{year}-{month}"
                 exceptions = st.session_state.availability_exceptions.get(
                     exc_key, {})
-                
+
                 # Full Absence
                 if exceptions.get('full_absence', False):
                     continue
                 if current_date in exceptions.get('blocked_days', []):
                     continue
-                
+
                 # Feature 2: Partial Absence
                 date_iso = current_date.isoformat()
-                partial_type = exceptions.get('partial_blocks', {}).get(date_iso)
+                partial_type = exceptions.get(
+                    'partial_blocks', {}).get(date_iso)
                 if partial_type:
                     # "Manhã": blocked if hour < 12
                     if partial_type == "morning" and hour_int < 12:
@@ -503,7 +505,7 @@ def generate_schedule_range(start_date, end_date):
                     continue
 
                 available_pool.append(v)
-            
+
             pool = available_pool if available_pool else [
                 v for v in volunteers if v.active]
 
@@ -586,8 +588,8 @@ def generate_schedule_range(start_date, end_date):
                 if "responsável" in role_norm:
                     # Feature 1: Presbíteros OU Diáconos Líderes
                     candidates = [
-                        v for v in pool 
-                        if (v.role.value == Role.PRESBITERO.value) or 
+                        v for v in pool
+                        if (v.role.value == Role.PRESBITERO.value) or
                            (v.role.value == Role.DIACONO.value and v.can_lead)
                     ]
                 elif "portaria" in role_norm or "estacionamento" in role_norm:
@@ -664,11 +666,11 @@ st.markdown("""
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2664/2664627.png", width=80)
     st.title("ADHR Sistemas")
-    st.caption("v1.3.1 - Recomeço")
+    st.caption("v2.0.1 - O Recomeço")
     st.markdown("---")
     st.info("👋 **Bem-vindo!** Seus dados agora são salvos automaticamente.")
 
-    st.write("© 2025 ADHR")
+    st.write("© 2026 ADHR")
 
 st.title("⛪ Gerenciador de Escalas")
 
@@ -951,10 +953,10 @@ with tab2:
                     # 2. Vamos recriar as listas baseadas no input atual.
 
                     existing_partial = curr.get('partial_blocks', {}).copy()
-                    
+
                     # Convertendo inputs para lista de strings if needed, mas blocked já é Date objects
                     new_full_blocks = []
-                    
+
                     # Tipo Simples
                     scope = "full"
                     if "Manhã" in block_type:
@@ -979,7 +981,7 @@ with tab2:
                     # E os dias que foram DESMARCADOS?
                     # O blocked contém a lista "Atualizada" de dias com ALGUMA restrição.
                     # Se um dia não está em 'blocked', ele deve ser removido de tudo.
-                    
+
                     final_full_days = []
                     final_partial = {}
 
@@ -991,13 +993,13 @@ with tab2:
                     # Problema: Se ele quiser marcar dia 5 como Manhã e dia 10 como Noite?
                     # Ele teria que fazer em 2 passos. Mas o st.form envia tudo de uma vez.
                     # Com multiselect único, ele impõe o tipo a todos.
-                    # LIMITAÇÃO ACEITÁVEL para a UI simples. 
-                    # OBS: Se ele quiser mix, ele salva um grupo, depois muda a seleção e salva outro? 
+                    # LIMITAÇÃO ACEITÁVEL para a UI simples.
+                    # OBS: Se ele quiser mix, ele salva um grupo, depois muda a seleção e salva outro?
                     # O st.multiselect re-renderiza com o que está no estado.
-                    
+
                     # Solução p/ UX: Permitir salvar "incrementalmente" é difícil sem session state complexo.
-                    # Vamos assumir: O Radio aplica o tipo para OS DIAS SELECIONADOS. 
-                    
+                    # Vamos assumir: O Radio aplica o tipo para OS DIAS SELECIONADOS.
+
                     st.session_state.availability_exceptions[exc_key] = {
                         'full_absence': full,
                         'blocked_days': new_full_blocks,
