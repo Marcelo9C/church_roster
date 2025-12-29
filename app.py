@@ -351,7 +351,11 @@ def create_pdf(schedule_df, title_text):
                             card_width, card_height, row_data)
         current_y += card_height + 5
 
-    return pdf.output(dest='S')
+    val = pdf.output(dest='S')
+    # Fix Streamlit Cloud (Linux) returning str instead of bytearray
+    if isinstance(val, str):
+        return val.encode('latin-1')
+    return val
 
 
 # --- 4. Lógica de Geração ---
