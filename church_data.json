@@ -771,49 +771,17 @@
     ],
     "events_config": [
         {
-            "name": "Culto da Palavra",
-            "weekday": 1,
-            "time": "18:30",
+            "name": "Culto da Virada",
+            "weekday": 2,
+            "time": "19:30",
             "roles_needed": [
                 "Responsável",
+                "Recepção",
+                "Recepção",
                 "Portaria",
-                "Recepção",
-                "Estacionamento"
-            ]
-        },
-        {
-            "name": "Quinta Profética",
-            "weekday": 3,
-            "time": "18:30",
-            "roles_needed": [
-                "Responsável",
-                "Portaria",
-                "Recepção",
-                "Recepção",
-                "Estacionamento"
-            ]
-        },
-        {
-            "name": "Escola Bíblica Dominical",
-            "weekday": 6,
-            "time": "08:30",
-            "roles_needed": [
-                "Responsável",
-                "Portaria",
-                "Recepção",
-                "Estacionamento"
-            ]
-        },
-        {
-            "name": "Culto de Adoração",
-            "weekday": 6,
-            "time": "17:30",
-            "roles_needed": [
-                "Responsável",
-                "Portaria",
-                "Recepção",
-                "Recepção",
-                "Estacionamento"
+                "Estacionamento",
+                "Estacionamento",
+                "Cantina"
             ]
         },
         {
@@ -821,12 +789,144 @@
             "weekday": 0,
             "time": "21:30",
             "roles_needed": [
+                "Portaria",
+                "Estacionamento",
+                "Recepção"
+            ]
+        },
+        {
+            "name": "Cuilto Especial",
+            "weekday": 5,
+            "time": "18:30",
+            "roles_needed": [
+                "Templo",
+                "Portaria",
+                "Intercessão"
+            ]
+        },
+        {
+            "name": "Culto Especial 2 ",
+            "weekday": 6,
+            "time": "19:00",
+            "roles_needed": [
                 "Responsável",
                 "Portaria",
-                "Repção",
-                "Estacionamento"
+                "Recepção",
+                "Estacionamento",
+                "Galeria"
             ]
         }
     ],
-    "availability_exceptions": {}
+    "availability_exceptions": {
+        "Cláudia Teixeira_2025-1": {
+            "full_absence": false,
+            "blocked_days": [
+                "2025-01-05",
+                "2025-01-08",
+                "2025-01-07",
+                "2025-01-06"
+            ],
+            "partial_blocks": {}
+        },
+        "Alba Maria_2025-1": {
+            "full_absence": false,
+            "blocked_days": [
+                "2025-01-02",
+                "2025-01-04",
+                "2025-01-06"
+            ],
+            "partial_blocks": {}
+        },
+        "Adilson Belau_2026-1": {
+            "full_absence": true,
+            "blocked_days": [
+                "2026-01-02",
+                "2026-01-06",
+                "2026-01-07",
+                "2026-01-08",
+                "2026-01-10",
+                "2026-01-11",
+                "2026-01-12",
+                "2026-01-13",
+                "2026-01-14",
+                "2026-01-15",
+                "2026-01-16",
+                "2026-01-17",
+                "2026-01-18",
+                "2026-01-19",
+                "2026-01-20",
+                "2026-01-21",
+                "2026-01-22",
+                "2026-01-23",
+                "2026-01-24",
+                "2026-01-25",
+                "2026-01-26",
+                "2026-01-27",
+                "2026-01-28",
+                "2026-01-29",
+                "2026-01-30",
+                "2026-01-31"
+            ],
+            "partial_blocks": {}
+        },
+        " Andreza Gurjão_2026-1": {
+            "full_absence": true,
+            "blocked_days": [],
+            "partial_blocks": {}
+        },
+        "Marcelo Carvalho_2026-1": {
+            "full_absence": true,
+            "blocked_days": [],
+            "partial_blocks": {}
+        },
+        "Adriano Lima_2026-1": {
+            "full_absence": false,
+            "blocked_days": [
+                "2026-01-01",
+                "2026-01-02",
+                "2026-01-03",
+                "2026-01-04",
+                "2026-01-06",
+                "2026-01-07",
+                "2026-01-08",
+                "2026-01-09",
+                "2026-01-10",
+                "2026-01-11",
+                "2026-01-13",
+                "2026-01-14",
+                "2026-01-15",
+                "2026-01-16",
+                "2026-01-17",
+                "2026-01-18",
+                "2026-01-20",
+                "2026-01-21",
+                "2026-01-22",
+                "2026-01-23",
+                "2026-01-24",
+                "2026-01-25",
+                "2026-01-26",
+                "2026-01-27",
+                "2026-01-28",
+                "2026-01-29",
+                "2026-01-30",
+                "2026-01-31"
+            ],
+            "partial_blocks": {}
+        },
+        "Alessandra Santos _2026-1": {
+            "full_absence": true,
+            "blocked_days": [],
+            "partial_blocks": {}
+        },
+        " Ana Cristina _2026-1": {
+            "full_absence": true,
+            "blocked_days": [],
+            "partial_blocks": {}
+        },
+        "Adilson Belau_2025-1": {
+            "full_absence": true,
+            "blocked_days": [],
+            "partial_blocks": {}
+        }
+    }
 }
