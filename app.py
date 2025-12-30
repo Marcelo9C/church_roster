@@ -217,14 +217,13 @@ class PDF(FPDF):
         else:
             time_val = str(raw_time)[:5]
 
-        resp_val = str(data.get('Responsável', 'TBD'))
+        resp_val = str(data.get('Responsável', ''))
 
-        # Left align Event
-        self.set_xy(x + 2, y)
-        self.cell(w/2, 8, event_val, 0, 0, 'L')
+        if resp_val.lower() in ["none", "nan", "vago", "", "tbd"]:
+            meta_text = f"{time_val}"
+        else:
+            meta_text = f"{time_val}  |  Resp: {resp_val}"
 
-        # Right align Meta
-        meta_text = f"{time_val}  |  Resp: {resp_val}"
         self.set_xy(x + w/2, y)
         self.cell(w/2 - 2, 8, meta_text, 0, 1, 'R')
 
@@ -630,6 +629,12 @@ st.set_page_config(page_title="Gerenciador eclesiástico",
 
 st.markdown("""
 <style>
+    /* Hide Streamlit Branding and Menus */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppDeployButton {display: none;}
+
     /* Global Styles */
     .stButton>button { width: 100%; border-radius: 6px; height: 3em; font-weight: 600; }
     div[data-testid="stExpander"] { border: 1px solid #4bb0b6; border-radius: 8px; }
@@ -700,7 +705,10 @@ with tab1:
                 with col_y:
                     s_year = st.number_input("Ano", 2024, 2030, 2025)
                 with col_m:
-                    s_month = st.selectbox("Mês", range(1, 13))
+                    months_list = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                                   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+                    s_month_name = st.selectbox("Mês", months_list)
+                    s_month = months_list.index(s_month_name) + 1
 
                 start_d = date(s_year, s_month, 1)
                 last_day = calendar.monthrange(s_year, s_month)[1]
@@ -872,11 +880,18 @@ with tab1:
                         if n and str(n) != "N/A" and str(n).lower() != "nan":
                             roles_html += f'<div class="role-row"><span class="role-label">{r}</span><span class="role-name">{n}</span></div>'
 
+                    # Prepare meta header
+                    resp_val = str(row.get('Responsável', ''))
+                    if resp_val.lower() in ["none", "nan", "vago", "", "tbd"]:
+                        meta_header = f"⏰ {row.get('Horário', '')}"
+                    else:
+                        meta_header = f"⏰ {row.get('Horário', '')}  |  👤 Resp: {resp_val}"
+
                     st.markdown(f"""
                     <div class="card-preview">
                         <div class="card-header">
                             <span>{row.get('Evento', '')}</span>
-                            <span class="card-meta">⏰ {row.get('Horário', '')}  |  👤 Resp: {row.get('Responsável', '')}</span>
+                            <span class="card-meta">{meta_header}</span>
                         </div>
                         <div class="card-body">
                             <div class="card-sidebar card-day">
@@ -895,7 +910,7 @@ with tab1:
 
 # --- TAB 2: DISPONIBILIDADE ---
 with tab2:
-    st.header("Gerenciador de Exceções")
+    st.header("Gerenciador de Disponibilidade")
     if not st.session_state.volunteers:
         st.warning("Sem cadastros.")
     else:
@@ -903,7 +918,10 @@ with tab2:
         with col_filtro1:
             d_year = st.number_input("Ano", 2024, 2030, 2025, key='exc_year')
         with col_filtro2:
-            d_month = st.selectbox("Mês", range(1, 13), key='exc_month')
+            months_list = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                           "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+            d_month_name = st.selectbox("Mês", months_list, key='exc_month')
+            d_month = months_list.index(d_month_name) + 1
 
         volunteer_names = [v.name for v in st.session_state.volunteers]
         sel_name = st.selectbox("Buscar Obreiro:", volunteer_names)
@@ -915,102 +933,99 @@ with tab2:
 
             with st.form("exc_form"):
                 full = st.checkbox("Ausência Total no Mês",
-                                   value=curr.get('full_absence', False))
+                                   value=curr.get('full_absence', False),
+                                   key=f"full_abs_{sel_name}_{d_year}_{d_month}")
+
                 days = get_days_in_month(d_year, d_month)
                 days_fmt = {
                     d: f"{d.strftime('%d/%m')} ({week_day_name(d.weekday())})" for d in days}
 
-                blocked_dates_input = curr.get('blocked_days', [])
-                # Garantir que são objetos date
-                default_vals = []
-                for b in blocked_dates_input:
-                    if isinstance(b, date):
-                        default_vals.append(b)
-                    elif isinstance(b, str):
-                        default_vals.append(date.fromisoformat(b))
+                # Lógica de Carregamento (Positiva)
+                stored_blocked = curr.get('blocked_days', [])
 
-                blocked = st.multiselect(
-                    "Selecione os dias:",
+                # Normaliza stored_blocked para comparar datas
+                blocked_set = set()
+                for b in stored_blocked:
+                    if isinstance(b, date):
+                        blocked_set.add(b)
+                    elif isinstance(b, str):
+                        blocked_set.add(date.fromisoformat(b))
+
+                # Se stored_blocked for vazio e full=False, assume disponível total (todos os dias selecionados?)
+                # REQUISITO: "Se o campo estiver vazio, o usuário está disponível o mês todo."
+                # REQUISITO: "Se stored_blocked estiver vazio, default_vals deve ser vazio" ???
+                # CORREÇÃO REQUISITO 2: "Se stored_blocked estiver vazio, default_vals deve ser vazio (indicando disponibilidade total na nova lógica)."
+                # - Espera, se está vazio no multiselect = disponível total.
+                # - Se stored_blocked tem itens = esses dias estão bloqueados, o resto está liberado.
+                # - Então default_vals (o que aparece no box) são os dias LIMPOS de bloqueio.
+
+                default_vals = []
+                if blocked_set:
+                    default_vals = [d for d in days if d not in blocked_set]
+
+                # Se não tem bloqueio nenhum salvo, o campo vem vazio (Disponível Total).
+
+                # Chave Dinâmica para Resetar UI
+                dynamic_key = f"avail_days_{sel_name}_{d_year}_{d_month}"
+
+                selected_available = st.multiselect(
+                    "Selecione os dias DISPONÍVEIS (Deixe vazio se disponível o mês todo):",
                     days,
                     default=default_vals,
-                    format_func=lambda x: days_fmt[x]
+                    format_func=lambda x: days_fmt[x],
+                    key=dynamic_key
                 )
 
-                block_type = st.radio(
-                    "Tipo de Bloqueio para os dias selecionados:",
-                    ["Dia Todo (Indisponível)", "Apenas Manhã (Indisponível até 12h)",
-                     "Apenas Noite (Indisponível após 12h)"],
+                st.caption(
+                    "ℹ️ A lógica é inversa: dias NÃO selecionados ficarão INDISPONÍVEIS. Se tudo estiver vazio, o sistema considera disponível o mês inteiro.")
+
+                avail_type = st.radio(
+                    "Como é a disponibilidade nos dias selecionados?",
+                    ["Dia Todo (Livre)", "Apenas Manhã (Livre até 12h)",
+                     "Apenas Noite (Livre após 12h)"],
                     index=0
                 )
 
                 if st.form_submit_button("Salvar Restrição"):
-                    # Carregar existentes para preservar o que não foi alterado?
-                    # Na UI atual, o usuário edita a lista TOTAL de dias bloqueados "deste mês".
-                    # Se implementarmos 'partial', a UI de multiselect única fica confusa se misturar tipos.
-                    # Vamos assumir que o Multiselect define QUEM está bloqueado, e o Radio define O MODO desses selecionados.
-                    # ISSO PODE SOBRESCREVER dados anteriores se não for cuidadoso.
-                    # Melhor abordagem para UX simples: O multiselect mostra TODOS bloqueados (parcial ou total).
-                    # Ao salvar, atualizamos o status DESSES dias para o tipo selecionado.
+                    # Lógica de Salvamento (Inversa)
+                    new_blocked_days = []
 
-                    # Lógica Híbrida Simplificada:
-                    # 1. Limpar configurações anteriores para o Mês atual? Não, perigoso.
-                    # 2. Vamos recriar as listas baseadas no input atual.
+                    if not selected_available:
+                        # Se vazio = Livre TOTAL = 0 bloqueios
+                        new_blocked_days = []
+                    else:
+                        # Se selecionou dias, O RESTO é bloqueado
+                        sel_set = set(selected_available)
+                        new_blocked_days = [
+                            d for d in days if d not in sel_set]
 
-                    existing_partial = curr.get('partial_blocks', {}).copy()
+                    # Tratar Parcial
+                    # O Radio define como o usuário está LIVRE nos dias selecionados (selected_available).
+                    # Mas o sistema guarda EXCEÇÕES (bloqueios).
+                    existing_partial = {}  # Resetar parciais desse mês para garantir consistência
 
-                    # Convertendo inputs para lista de strings if needed, mas blocked já é Date objects
-                    new_full_blocks = []
+                    # Se usuário disse "Apenas Manhã" (Livre Manhã) -> Bloquear Noite desses dias
+                    # Se usuário disse "Apenas Noite" (Livre Noite) -> Bloquear Manhã desses dias
 
-                    # Tipo Simples
-                    scope = "full"
-                    if "Manhã" in block_type:
-                        scope = "morning"
-                    elif "Noite" in block_type:
-                        scope = "night"
+                    target_scope_to_block = None
+                    if "Apenas Manhã" in avail_type:
+                        target_scope_to_block = "night"
+                    elif "Apenas Noite" in avail_type:
+                        target_scope_to_block = "morning"
 
-                    for day_obj in blocked:
-                        d_iso = day_obj.isoformat()
-                        if scope == "full":
-                            new_full_blocks.append(day_obj)
-                            # Remove de parcial se existisse
-                            if d_iso in existing_partial:
-                                del existing_partial[d_iso]
-                        else:
-                            # Adiciona no parcial
-                            existing_partial[d_iso] = scope
-                            # Garante que não está no full (se o usuario mudou de full pra parcial)
-                            # (A lista new_full_blocks só tem o que é full agora)
-                            pass
+                    if target_scope_to_block:
+                        for d_obj in selected_available:
+                            existing_partial[d_obj.isoformat()
+                                             ] = target_scope_to_block
 
-                    # E os dias que foram DESMARCADOS?
-                    # O blocked contém a lista "Atualizada" de dias com ALGUMA restrição.
-                    # Se um dia não está em 'blocked', ele deve ser removido de tudo.
-
-                    final_full_days = []
-                    final_partial = {}
-
-                    blocked_iso_set = {d.isoformat() for d in blocked}
-
-                    # Recalcular Baseado na intenção do usuário:
-                    # O usuário vê "Dias Indisponíveis". Ele marca/desmarca.
-                    # O que ficar marcado, assume o "block_type" selecionado.
-                    # Problema: Se ele quiser marcar dia 5 como Manhã e dia 10 como Noite?
-                    # Ele teria que fazer em 2 passos. Mas o st.form envia tudo de uma vez.
-                    # Com multiselect único, ele impõe o tipo a todos.
-                    # LIMITAÇÃO ACEITÁVEL para a UI simples.
-                    # OBS: Se ele quiser mix, ele salva um grupo, depois muda a seleção e salva outro?
-                    # O st.multiselect re-renderiza com o que está no estado.
-
-                    # Solução p/ UX: Permitir salvar "incrementalmente" é difícil sem session state complexo.
-                    # Vamos assumir: O Radio aplica o tipo para OS DIAS SELECIONADOS.
-
+                    # Salvar
                     st.session_state.availability_exceptions[exc_key] = {
                         'full_absence': full,
-                        'blocked_days': new_full_blocks,
+                        'blocked_days': new_blocked_days,
                         'partial_blocks': existing_partial
                     }
-                    save_data()  # SAVE AUTO
-                    st.success("Salvo!")
+                    save_data()
+                    st.toast("Disponibilidade salva com sucesso!", icon='✅')
 
 # --- TAB 3: CONFIGURAÇÕES ---
 with tab3:
@@ -1079,7 +1094,12 @@ with tab3:
                               for r in roles_str.split(",") if r.strip()]
 
                 time_val = row["Horário"]
-                time_str = time_val.strftime("%H:%M") if time_val else "00:00"
+                if isinstance(time_val, str):
+                    time_str = time_val
+                elif time_val:
+                    time_str = time_val.strftime("%H:%M")
+                else:
+                    time_str = "00:00"
 
                 new_c.append({
                     "name": row["Nome"],
@@ -1089,7 +1109,8 @@ with tab3:
                 })
         st.session_state.events_config = new_c
         save_data()  # SAVE AUTO
-        st.success("Eventos atualizados com sucesso!")
+        save_data()  # SAVE AUTO
+        st.toast("Eventos atualizados com sucesso!", icon='✅')
 
 # --- TAB 4: CADASTRO (DATA EDITOR) ---
 with tab4:
@@ -1224,8 +1245,13 @@ with tab4:
                     gender_enum = Gender.MALE if new_gender == "M" else Gender.FEMALE
                     st.session_state.volunteers.append(
                         Volunteer(new_name, role_enum, gender_enum))
+                    # Ordenar lista completa após adição
+                    st.session_state.volunteers.sort(key=lambda x: x.name)
                     save_data()
-                    st.success(f"{new_name} adicionado!")
+
+                    st.toast(f"✅ {new_name} adicionado com sucesso!", icon='💾')
+                    import time
+                    time.sleep(0.5)
                     st.rerun()
 
     st.divider()
@@ -1262,7 +1288,10 @@ with tab4:
                 obj = Volunteer.from_dict(row)
                 if obj:
                     new_list.append(obj)
+        # Ordenar alfabeticamente
+        new_list.sort(key=lambda x: x.name)
         st.session_state.volunteers = new_list
         save_data()
-        st.success("Tabela atualizada com sucesso!")
+        save_data()
+        st.toast("Tabela atualizada com sucesso!", icon='✅')
         st.rerun()
