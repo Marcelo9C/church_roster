@@ -761,7 +761,8 @@ with tab1:
                 edited_df,
                 num_rows="dynamic",
                 key="schedule_editor",
-                use_container_width=True,
+                # use_container_width=True,
+                width="stretch",
                 column_config={
                     "Data": st.column_config.DateColumn("Data", format="DD/MM/YYYY"),
                     "Dia": st.column_config.TextColumn("Dia"),
@@ -1076,7 +1077,8 @@ with tab3:
         df_events,
         num_rows="dynamic",
         key="ev_edit",
-        use_container_width=True,
+        # use_container_width=True,
+        width="stretch",
         column_config={
             "Dia Nome": st.column_config.SelectboxColumn("Dia da Semana", options=list(WEEKDAY_MAP.values()), required=True),
             "Dia Semana": None,
@@ -1280,7 +1282,8 @@ with tab4:
             "Líder?": st.column_config.CheckboxColumn("Líder?", help="Permite liderar escalas (Diáconos)", default=False),
             "Eq. Oração?": st.column_config.CheckboxColumn("Eq. Oração?", default=False)
         },
-        use_container_width=True,
+        # use_container_width=True,
+        width="stretch",
         key="editor_volunteers"
     )
 
