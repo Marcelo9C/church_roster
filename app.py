@@ -211,6 +211,10 @@ class PDF(FPDF):
 
         event_val = str(data.get('Evento', '')).upper()
 
+        # [FIX] Renderizar Nome do Evento (Esq)
+        self.set_xy(x + 4, y)
+        self.cell(w/2, 8, event_val, 0, 0, 'L')
+
         raw_time = data.get('Horário', '')
         if hasattr(raw_time, 'strftime'):
             time_val = raw_time.strftime('%H:%M')
@@ -632,7 +636,7 @@ st.markdown("""
     /* Hide Streamlit Branding and Menus */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* header {visibility: hidden;} */
     .stAppDeployButton {display: none;}
 
     /* Global Styles */
