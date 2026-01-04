@@ -177,12 +177,88 @@ if not st.session_state.volunteers and os.path.exists(DATA_FILE):
 
 # --- 3. Classes Utilitárias (PDF) ---
 
+LOGO_PATH = "logo adhr.png"
+
 class PDF(FPDF):
+    def rounded_rect(self, x, y, w, h, r, style=''):
+        k = self.k
+        hp = self.h
+        if style == 'F':
+            op = 'f'
+        elif style == 'FD' or style == 'DF':
+            op = 'B'
+        else:
+            op = 'S'
+        my_arc = 4/3 * (2**0.5 - 1) * r
+        self._out(f'{x*k:.2f} {(hp-(y+h))*k:.2f} m')
+        xc = x + w - r
+        yc = y + h - r
+        self._out(f'{xc*k:.2f} {(hp-(y+h))*k:.2f} l')
+        self._out(f'{(xc+r*my_arc)*k:.2f} {(hp-(y+h))*k:.2f} '
+                  f'{(xc+r)*k:.2f} {(hp-(yc+r*my_arc))*k:.2f} '
+                  f'{(xc+r)*k:.2f} {(hp-yc)*k:.2f} c')
+        self._out(f'{(x+w)*k:.2f} {(hp-yc)*k:.2f} l')
+        xc = x + w - r
+        yc = y + r
+        self._out(f'{(x+w)*k:.2f} {(hp-(yc-r*my_arc))*k:.2f} '
+                  f'{(xc+r*my_arc)*k:.2f} {(hp-(y))*k:.2f} '
+                  f'{xc*k:.2f} {(hp-(y))*k:.2f} c')
+        self._out(f'{xc*k:.2f} {(hp-(y))*k:.2f} l')
+        xc = x + r
+        yc = y + r
+        self._out(f'{(xc-r*my_arc)*k:.2f} {(hp-(y))*k:.2f} '
+                  f'{x*k:.2f} {(hp-(yc-r*my_arc))*k:.2f} '
+                  f'{x*k:.2f} {(hp-yc)*k:.2f} c')
+        self._out(f'{x*k:.2f} {(hp-yc)*k:.2f} l')
+        xc = x + r
+        yc = y + h - r
+        self._out(f'{x*k:.2f} {(hp-(yc+r*my_arc))*k:.2f} '
+                  f'{(xc-r*my_arc)*k:.2f} {(hp-(y+h))*k:.2f} '
+                  f'{xc*k:.2f} {(hp-(y+h))*k:.2f} c')
+        self._out(f'{op}')
+
+    def linear_gradient(self, x, y, w, h, c1, c2):
+        r1, g1, b1 = c1
+        r2, g2, b2 = c2
+        
+        for i in range(int(w)):
+            # Calculate color
+            r = r1 + (r2 - r1) * (i / w)
+            g = g1 + (g2 - g1) * (i / w)
+            b = b1 + (b2 - b1) * (i / w)
+            
+            self.set_fill_color(int(r), int(g), int(b))
+            self.rect(x + i, y, 1, h, 'F')
+
     def header(self):
+        # Logo - Increased size to 50
+        if os.path.exists(LOGO_PATH):
+            # x, y, w (h auto)
+            # Centering logic if needed, but keeping left as per request (or top left?)
+            # User request: "Aumente um pouco o tamanho do logo e alinhe o título principal ... centralizado verticalmente em relação ao logo"
+            self.image(LOGO_PATH, 10, 8, 40) 
+        
         self.set_font('Arial', 'B', 16)
-        self.set_text_color(0, 0, 0)
-        self.cell(0, 10, 'ESCALA DE OBREIROS & VOLUNTÁRIOS', 0, 1, 'C')
-        self.ln(2)
+        self.set_text_color(0, 59, 92) # Navy Blue
+        
+        # Calculate vertical alignment
+        # Logo height approx: 40w => depends on aspect ratio. Let's assume ~40x40 or 40xHi.
+        # Let's move title to right of logo, or just center it on page?
+        # Standard header implies Logo Left, Title Center.
+        # "alinhe o título principal ... centralizado verticalmente em relação ao logo" -> if logo acts as header "block".
+        # Let's assume title is adjacent or just below if big?
+        # Current implementation: image at 10,8. Header cell follows.
+        
+        # Move Cursor to align with logo middle approx.
+        # Logo Y=8. Height ~30-40 depending on ratio. 
+        # Move Title to the right of the logo to avoid overlap.
+        # Logo X_end = 10 + 40 = 50. Add margin -> 55.
+        self.set_xy(55, 18) # Moved X to 55, Y to 18 (approx middle of 40mm logo starting at 8)
+        self.cell(0, 10, 'ESCALA DE OBREIROS & VOLUNTÁRIOS', 0, 1, 'L') # Align Left looks better next to logo, or Center of remaining? User said "centralizado verticalmente", didn't specify horizontal. Let's try 'L' to be safe or 'C' of remaining.
+        # 'C' on remaining space (55 to End) is safe.
+        # actually, let's keep 'C' but with x offset.
+        
+        self.ln(10) # Space after header
 
     def footer(self):
         self.set_y(-15)
@@ -191,14 +267,18 @@ class PDF(FPDF):
         self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
 
     def draw_event_card(self, x, y, w, h, data):
-        GOLD = (184, 134, 11)
-        BLACK = (0, 0, 0)
+        # Visual Identity Colors
+        # Primary (Azul Petróleo Escuro): #003B5C -> RGB(0, 59, 92)
+        # Secondary (Roxo Violeta): #4B2182 -> RGB(75, 33, 130)
+        c1 = (0, 59, 92) 
+        c2 = (75, 33, 130)
         WHITE = (255, 255, 255)
+        # Fix for border color usage below
+        PRIMARY_COLOR = c1
 
-        # 1. Barra de Título
-        self.set_fill_color(*GOLD)
-        self.rect(x, y, w, 8, 'F')
-
+        # 1. Barra de Título com Gradiente
+        self.linear_gradient(x, y, w, 8, c1, c2)
+        
         self.set_xy(x, y)
         self.set_font('Arial', 'B', 12)
         self.set_text_color(*WHITE)
@@ -209,7 +289,7 @@ class PDF(FPDF):
         # Left: Evento
         # Right: Time | Resp: Nome
 
-        event_val = str(data.get('Evento', '')).upper()
+        event_val = str(data.get('Evento', ''))
 
         # [FIX] Renderizar Nome do Evento (Esq)
         self.set_xy(x + 4, y)
@@ -236,12 +316,12 @@ class PDF(FPDF):
 
         # 2. Barra Lateral Esq (Dia Semanal)
         self.set_fill_color(245, 245, 245)
-        self.set_draw_color(*GOLD)
+        self.set_draw_color(*PRIMARY_COLOR)
         self.rect(x, body_y, 25, body_h, 'DF')
 
         self.set_xy(x, body_y + 5)
         self.set_font('Arial', 'B', 10)
-        self.set_text_color(*BLACK)
+        self.set_text_color(0, 0, 0) # BLACK
 
         day_val = str(data.get('Dia', '')).upper()
         weekday_lines = day_val.split("-")
@@ -321,6 +401,9 @@ def create_pdf(schedule_df, title_text):
     pdf = PDF()
     pdf.set_auto_page_break(auto=False)
     pdf.add_page()
+
+    # Espacamento para Logomarca
+    pdf.ln(5)
 
     pdf.set_font('Arial', '', 12)
     pdf.cell(0, 10, title_text, 0, 1, 'C')
@@ -637,11 +720,11 @@ st.markdown("""
 
     /* Global Styles */
     .stButton>button { width: 100%; border-radius: 6px; height: 3em; font-weight: 600; }
-    div[data-testid="stExpander"] { border: 1px solid #4bb0b6; border-radius: 8px; }
+    div[data-testid="stExpander"] { border: 1px solid #003B5C; border-radius: 8px; }
     
     /* Card Preview Styles */
     .card-preview {
-        border: 1px solid #B8860B;
+        border: 1px solid #003B5C;
         border-radius: 8px;
         margin-bottom: 15px;
         background-color: #2b2b2b;
@@ -650,8 +733,8 @@ st.markdown("""
         overflow: hidden;
     }
     .card-header {
-        background: linear-gradient(90deg, #B8860B 0%, #daa520 100%);
-        color: white;
+        background: linear-gradient(90deg, #003B5C 0%, #4B2182 100%);
+        color: white; /* Ensure White Text */
         padding: 8px 15px;
         font-weight: bold;
         font-size: 1.1em;
@@ -662,8 +745,8 @@ st.markdown("""
     .card-meta { font-size: 0.9em; opacity: 0.9; }
     .card-body { display: flex; padding: 0; }
     .card-sidebar { width: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; font-weight: bold; text-align: center; }
-    .card-day { background-color: #333; border-right: 2px solid #B8860B; font-size: 0.9em; text-transform: uppercase; }
-    .card-date { background-color: #333; border-left: 2px solid #B8860B; }
+    .card-day { background-color: #333; border-right: 2px solid #003B5C; font-size: 0.9em; text-transform: uppercase; }
+    .card-date { background-color: #333; border-left: 2px solid #003B5C; }
     .card-content { flex-grow: 1; padding: 10px 15px; background-color: #1e1e1e; }
     .role-row { display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding: 6px 0; align-items: center; }
     .role-row:last-child { border-bottom: none; }
@@ -673,9 +756,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2664/2664627.png", width=80)
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, use_container_width=True)
+    else:
+        st.image("https://cdn-icons-png.flaticon.com/512/2664/2664627.png", width=80)
+    
     st.title("ADHR Sistemas")
-    st.caption("v2.0.1 - O Recomeço")
+    st.caption("v2.1.0 - Visual Blue")
     st.markdown("---")
     st.info("👋 **Bem-vindo!** Seus dados agora são salvos automaticamente.")
 
@@ -713,7 +800,7 @@ with tab1:
                 start_d = date(s_year, s_month, 1)
                 last_day = calendar.monthrange(s_year, s_month)[1]
                 end_d = date(s_year, s_month, last_day)
-                title_ref = f"Mês de Referência: {calendar.month_name[s_month].capitalize()}/{s_year}"
+                title_ref = f"Mês de Referência: {s_month_name}/{s_year}"
 
             else:  # Semanal
                 start_d = st.date_input(
@@ -847,6 +934,10 @@ with tab1:
                 st.markdown(href, unsafe_allow_html=True)
 
             with col_prev:
+                # Logo no Preview
+                if os.path.exists(LOGO_PATH):
+                    st.image(LOGO_PATH, width=150)
+                
                 st.markdown("### Prévia do Documento")
                 for mn, row in final_df.iterrows():
                     # Lógica de formatação segura
@@ -1255,7 +1346,7 @@ with tab4:
                     st.rerun()
 
     st.divider()
-    st.subheader("📋 Tabela Geral de Obreiros")
+    st.subheader("📋 Tabela Geral de Obreiros & Voluntários")
     st.warning("**Como Editar ou Excluir:**\n1. Clique duas vezes para **Editar**.\n2. Del para **Excluir**.\n3. Clique em **Salvar**.")
 
     if st.session_state.volunteers:
